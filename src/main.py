@@ -57,10 +57,12 @@ def generate_maze_with_branches(grid: Grid, carve_limit: int):
                 and grid.cells_by_position[mid_pos].is_wall
             ):
                 grid.cells_by_position[mid_pos].is_wall = False
+                grid.cells_by_position[chosen].image = route_image
                 carved_count += 1
 
             # Carve chosen
             grid.cells_by_position[chosen].is_wall = False
+            grid.cells_by_position[chosen].image = route_image
             carved_count += 1
 
             stack.append(chosen)
@@ -75,9 +77,11 @@ def generate_maze_with_branches(grid: Grid, carve_limit: int):
     if carved_positions:
         end = max(carved_positions, key=lambda p: manhattan_distance(start, p))
         grid.end_position = end
+        grid.cells_by_position[end].image = end_image
     else:
         # If for some reason nothing got carved, fallback
         grid.end_position = start
+        grid.cells_by_position[start].image = start_image
 
 
 def init_grid() -> Grid:
@@ -85,11 +89,6 @@ def init_grid() -> Grid:
 
     for y in range(0, SCREEN_HEIGHT, int(CELL_HEIGHT)):
         for x in range(0, SCREEN_WIDTH, int(CELL_WIDTH)):
-            # cell_image = pygame.image.load("cell_image.png")
-            # cell_image = pygame.transform.scale(
-            #     cell_image, (int(CELL_WIDTH), int(CELL_HEIGHT))
-            # )
-
             cell: Cell = Cell()
             grid.cells_by_position[Position(x, y)] = cell
 
@@ -112,17 +111,7 @@ def main():
         delta_time = current_time - last_time
         last_time = current_time
         for pos, cell in grid.cells_by_position.items():
-            selected_image = None
-            if cell.is_wall:
-                selected_image = wall_image
-            else:
-                if pos == grid.start_position:
-                    selected_image = start_image
-                elif pos == grid.end_position:
-                    selected_image = end_image
-                else:
-                    selected_image = route_image
-            screen.blit(selected_image, (pos.x, pos.y))
+            screen.blit(cell.image, (pos.x, pos.y))
 
         player: Player = Player(cell=Cell())
 

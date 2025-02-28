@@ -1,5 +1,6 @@
 import pygame
 from dataclasses import dataclass, field
+from images import wall_image
 
 
 @dataclass
@@ -13,7 +14,7 @@ class Position:
 
 @dataclass
 class Cell:
-    # image: pygame.Surface
+    image: pygame.Surface = field(default=wall_image)
     is_wall: bool = field(default=True)
 
 
