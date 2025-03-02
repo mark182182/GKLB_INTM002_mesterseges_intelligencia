@@ -10,9 +10,11 @@ class Spritesheet:
         self.sprite_sheet = pygame.image.load(filename).convert()
 
     def get_image(self, x, y):
-        image = pygame.Surface([self.sprite_size, self.sprite_size])
+        image = pygame.Surface([self.sprite_size, self.sprite_size], pygame.SRCALPHA)
         image.blit(
-            self.sprite_sheet, (0, 0), (x, y, self.sprite_size, self.sprite_size)
+            self.sprite_sheet,
+            (0, 0),
+            (x, y, self.sprite_size, self.sprite_size),
         )
         return image
 
@@ -28,6 +30,7 @@ def main():
 
     image = sprite_sheet.get_image(0 * SPRITE_SIZE, 7 * SPRITE_SIZE)
     screen.blit(image, (0, SPRITE_SIZE))
+
 
 if __name__ == "__main__":
     pygame.init()

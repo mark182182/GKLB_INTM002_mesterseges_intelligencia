@@ -1,5 +1,14 @@
 import pygame
-from constants import ASSETS_PATH, SCREEN_HEIGHT, SCREEN_WIDTH, CELL_HEIGHT, CELL_WIDTH
+from constants import (
+    ASSETS_PATH,
+    CARVE_LIMIT,
+    DIRECTIONS,
+    SCREEN_HEIGHT,
+    SCREEN_WIDTH,
+    CELL_HEIGHT,
+    CELL_WIDTH,
+    TILESET_SPRITE_PATH,
+)
 from models import Position, Cell, Player, Grid, Map
 from images import ImageId, ImageLoader
 import random as rnd
@@ -13,7 +22,7 @@ def manhattan_distance(a: Position, b: Position) -> int:
 
 
 def generate_maze_with_branches(
-    images_by_id: dict[ImageId, pygame.Surface], grid: Grid, carve_limit: int
+    images_by_id: dict[ImageId, pygame.Surface], grid: Grid
 ):
     """
     Carves out up to 'carve_limit' cells in the grid using a DFS-based approach
@@ -33,32 +42,25 @@ def generate_maze_with_branches(
     # Save the start in the grid so we can draw it
     grid.start_position = start
 
-    directions = [
-        (0, -int(CELL_HEIGHT)),
-        (int(CELL_WIDTH), 0),
-        (0, int(CELL_HEIGHT)),
-        (-int(CELL_WIDTH), 0),
-    ]
-
     # 3) DFS loop, carve until we reach carve_limit or run out of neighbors
-    while stack and carved_count < carve_limit:
+    while stack and carved_count < CARVE_LIMIT:
         current = stack[-1]
         neighbors: list[Position] = []
-        for dx, dy in directions:
+        for dx, dy in DIRECTIONS:
             nxt = Position(current.x + dx, current.y + dy)
             if nxt in grid.cells_by_position and grid.cells_by_position[nxt].is_wall:
                 neighbors.append(nxt)
 
-        if neighbors and carved_count < carve_limit:
+        if neighbors and carved_count < CARVE_LIMIT:
             chosen: Position = rnd.choice(neighbors)
 
             # Carve chosen
             grid.cells_by_position[chosen].is_wall = False
             if carved_count == 1:
                 grid.cells_by_position[chosen].image = images_by_id[ImageId.START_IMAGE]
-            else:    
+            else:
                 grid.cells_by_position[chosen].image = images_by_id[ImageId.ROUTE_IMAGE]
-            
+
             carved_count += 1
 
             stack.append(chosen)
@@ -99,16 +101,24 @@ def main():
     pygame.display.set_caption("pygame-deep-q")
     screen = pygame.display.set_mode(size=(SCREEN_WIDTH, SCREEN_HEIGHT))
 
-    sprite_sheet = Spritesheet(
-        ASSETS_PATH / "16x16-dark-tech-base-tileset/troid_spritesheet16.gif"
-    )
+    sprite_sheet = Spritesheet(TILESET_SPRITE_PATH)
     image_loader: ImageLoader = ImageLoader(sprite_sheet)
     images_by_id: dict[ImageId, pygame.Surface] = image_loader.load_all_images()
 
     grid: Grid = init_grid(images_by_id)
-    generate_maze_with_branches(images_by_id, grid, 1024)
+    generate_maze_with_branches(images_by_id, grid)
+
+    # find a non-wall position next to the grid.start_position
+    player_pos: Position = None
+    for dx, dy in DIRECTIONS:
+        pos = Position(grid.start_position.x + dx, grid.start_position.y + dy)
+        if pos in grid.cells_by_position and not grid.cells_by_position[pos].is_wall:
+            player_pos = pos
+            break
 
     while True:
+        screen.fill((0, 0, 0))  # Fill the screen with black in order to clear
+
         current_time = pygame.time.get_ticks()
         delta_time = current_time - last_time
         last_time = current_time
@@ -116,22 +126,28 @@ def main():
             screen.blit(cell.image, (pos.x, pos.y))
 
         player: Player = Player(cell=Cell(image=images_by_id[ImageId.PLAYER_IMAGE]))
-
-        non_wall_positions: list[Position] = [
-            pos for pos, cell in grid.cells_by_position.items() if not cell.is_wall
-        ]
-        player_pos: Position = rnd.choice(non_wall_positions)
-
-        player_rect = pygame.rect.Rect(
-            player_pos.x, player_pos.y, CELL_WIDTH, CELL_HEIGHT
-        )
-
-        pygame.draw.rect(screen, (255, 0, 0), player_rect)
+        screen.blit(player.cell.image, (player_pos.x, player_pos.y))
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 return
+            if event.type == pygame.KEYDOWN:
+                new_player_pos: Position = None
+                if event.key == pygame.K_UP:
+                    new_player_pos = Position(player_pos.x, player_pos.y - CELL_HEIGHT)
+                if event.key == pygame.K_DOWN:
+                    new_player_pos = Position(player_pos.x, player_pos.y + CELL_HEIGHT)
+                if event.key == pygame.K_LEFT:
+                    new_player_pos = Position(player_pos.x - CELL_WIDTH, player_pos.y)
+                if event.key == pygame.K_RIGHT:
+                    new_player_pos = Position(player_pos.x + CELL_WIDTH, player_pos.y)
+
+                if (
+                    new_player_pos in grid.cells_by_position
+                    and not grid.cells_by_position[new_player_pos].is_wall
+                ):
+                    player_pos = new_player_pos
 
         clock.tick(60)
         # print(pygame.time.get_ticks())
